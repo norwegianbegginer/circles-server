@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from "firebase-admin";
-import { makeResponse, validateEmail } from './utils';
-import { getAccountById, getAccounts } from './Accounts/utils';
+import { makeResponse, validateEmail, getAvatarUrl } from './utils';
+import { getAccountById, getAccounts, getAccountByEmail, verifyAccountToken, getAccountsByIds } from './Accounts/utils';
 import { getRooms, getRoomById, getAccountRooms } from './Rooms/utils';
 import { IAccount } from './index.d';
 
@@ -17,28 +17,6 @@ const db = admin.firestore();
 // TODO: Move functions to separate files. (eg. src/Accounts/index.ts, etc.)
 
 
-
-//// * User
-
-/**
- * @description Prepare user for authentication. 
- * @version 1.0.0-alpha.1
- * WIP!
- */
-export const userLogin = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>)  => {
-    const { token } = request.query as { token: string };
-    
-    // TODO: Understand and implement... 
-    const decodedToken = await admin.auth().verifyIdToken(token)
-
-    if(!decodedToken) {
-        response.json(makeResponse(404, null, "Invalid token."));
-        return;
-    }
-
-    response.json(makeResponse(200, { uid: decodedToken.uid }));
-});
-
 //// * Accounts
 
 /**
@@ -47,7 +25,7 @@ export const userLogin = functions.https.onRequest(async (request: functions.htt
  * @example /accountCreate?email=cool@email.com&password=coolpassword
  */
 export const accountCreate = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>)  => {
-    const { email, password } = request.query as { email: string, password: string };
+    const { email, password, label } = request.query as { email: string, password: string, label?: string };
 
     if( !email ) {
         response.json(makeResponse(404, null, "Email not provided"));
@@ -69,13 +47,14 @@ export const accountCreate = functions.https.onRequest(async (request: functions
     }
 
     const accounts = await getAccounts();
-    if(accounts.find(account => account.email === email)) {
+    if(!!accounts.find(account => account.email !== undefined && account.email === email)) {
         response.json(makeResponse(404, null, "Account with this email already exists."));
         return;
     }
 
     const new_account = {
         email,
+        label: label ?? "Hero",
         created_at: new Date(),
         flags: [ "needs_init" ],
     };
@@ -149,8 +128,8 @@ export const accountChange = functions.https.onRequest(async (request: functions
  * @example /accountInfo?account_id=jakiesId
  */
 export const accountInfo = functions.https.onRequest(async (request, response)  => {
-    const { account_id, rooms, flags } = request.query as { account_id: string, rooms?: boolean, flags?: boolean };
-
+    const { account_id, rooms, flags, contacts } = request.query as { account_id: string, rooms?: boolean, flags?: boolean, contacts?: boolean };
+    
     if(!account_id) {
         response.json(makeResponse(400, undefined, "Account id not provided."))
         return;
@@ -163,11 +142,63 @@ export const accountInfo = functions.https.onRequest(async (request, response)  
         return;
     }
 
-    if(rooms == true)
+    if((!!rooms) === true)
         account.rooms = await getAccountRooms(account_id);
 
-    if(flags != true)
+    if((!!flags) !== true)
         delete account.flags;
+
+    if((!!contacts) !== true)
+        delete account.contacts;
+    
+    response.json(makeResponse(200, { ...account }));
+});
+
+/**
+ * @description Authorize account with token.
+ * @argument {string} token
+ * @version 1.0.0
+ * @example /accountLogin?token=jakiesId
+ */
+export const accountLogin = functions.https.onRequest(async (request, response)  => {
+    const { token } = request.query as { token: string };
+
+    if(!token) {
+        response.json(makeResponse(400, undefined, "Token not provided."))
+        return;
+    }
+    
+    const account_id = await verifyAccountToken(token);
+    
+    if(typeof account_id !== "string") {
+        response.json(makeResponse(404, undefined, "Token expired."))
+        return;
+    }
+    
+    response.json(makeResponse(200, { account_id }));
+});
+
+/**
+ * @description Find account by email or label.
+ * @argument {string} email  
+ * @argument {string} label  
+ * @version 1.0.0
+ * @example /accountFind?email=jakiesId
+ */
+export const accountFind = functions.https.onRequest(async (request, response)  => {
+    const { email, label } = request.query as { email?: string, label?: string };
+
+    if(!email && !label) {
+        response.json(makeResponse(400, undefined, "No query provided."))
+        return;
+    }
+    
+    const account = await getAccountByEmail(email as string);
+    
+    if(!account) {
+        response.json(makeResponse(404, undefined, "Account not found."))
+        return;
+    }
     
     response.json(makeResponse(200, { ...account }));
 });
@@ -215,7 +246,7 @@ export const roomList = functions.https.onRequest(async (request: functions.http
  * @example /roomInfo?room_id=idroom
  */
 export const roomInfo = functions.https.onRequest(async (request, response)  => {
-    const { room_id } = request.query as { room_id: string };
+    const { room_id, accounts } = request.query as { room_id: string, accounts?: boolean };
 
     if(!room_id) {
         response.json(makeResponse(400, undefined, "Room id not provided."))
@@ -228,6 +259,9 @@ export const roomInfo = functions.https.onRequest(async (request, response)  => 
         response.json(makeResponse(404, undefined, "Room not found."))
         return;
     }
+
+    if((!!accounts) == true)
+        room.accounts = await getAccountsByIds(room.access);
     
     response.json(makeResponse(200, { ...room }));
 });
@@ -263,4 +297,20 @@ export const checkRoomAccess = functions.https.onRequest(async (request: functio
     const hasAccess = !!room.access.includes(account_id);
 
     response.json(makeResponse(200, { hasAccess }));
+});
+
+/**
+ * Creates account on user creation.
+ */
+export const initializeAccount = functions.auth.user().onCreate(async (user) => {
+    const new_account: Partial<IAccount> = {
+        label: user.displayName ?? "Hero",
+        avatar_url: user.photoURL ?? getAvatarUrl(user.displayName ?? "Hero"),
+        email: user.email,
+        created_at: new Date(),
+        contacts: [],
+        flags: [ "needs_init", "verify_email" ],
+    };
+
+    await db.collection("users").doc(user.uid).set(new_account);
 });

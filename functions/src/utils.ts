@@ -1,4 +1,4 @@
-import { Dictionary } from "./index.d";
+//import { Dictionary } from "./index.d";
 
 type THttpStatus = 
         200 // Success with payload
@@ -18,29 +18,33 @@ export function validateEmail(email: string) {
     return re.test(String(email).toLowerCase());
 }
 
-// TODO: Implement!
-export const parseQuery = ( query: Dictionary<string>, types: Dictionary<string> ) => {
-    let parsedQuery: Dictionary<any> = {};
-
-    Object.keys(query).forEach(arg => {
-
-        switch(types[arg]) {
-            case "object": 
-                try {
-                    parsedQuery[arg] = JSON.parse(query[arg]);
-                } catch(err) {
-                    parsedQuery[arg] = {};
-                }
-                break;
-            case "boolean":
-                parsedQuery[arg] = !!(query[arg] === "true");
-                break;
-            case "number":
-                parsedQuery[arg] = Number(query[arg]);
-                break;
-        }
-
-    });
-
-    return parsedQuery as T;
+export function getAvatarUrl(label:string) {
+    return `https://eu.ui-avatars.com/api/?name=${label}`
 }
+
+// TODO: Implement!
+// export const parseQuery = ( query: Dictionary<string>, types: Dictionary<string> ) => {
+//     let parsedQuery: Dictionary<any> = {};
+
+//     Object.keys(query).forEach(arg => {
+
+//         switch(types[arg]) {
+//             case "object": 
+//                 try {
+//                     parsedQuery[arg] = JSON.parse(query[arg]);
+//                 } catch(err) {
+//                     parsedQuery[arg] = {};
+//                 }
+//                 break;
+//             case "boolean":
+//                 parsedQuery[arg] = !!(query[arg] === "true");
+//                 break;
+//             case "number":
+//                 parsedQuery[arg] = Number(query[arg]);
+//                 break;
+//         }
+
+//     });
+
+//     return parsedQuery as T;
+// }
