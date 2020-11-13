@@ -14,7 +14,15 @@ export interface IAccount {
 
 export type TContact = {
     account_id: string;
-    favorite?: boolean
+    favorite?: boolean;
+    last_contacted?: Date;
+}
+
+export type TSuggestion = {
+    type: "long-not-messaged"
+    | "never-messaged"
+    | "verify-email";
+    payload?: Dictionary<any>;
 }
 
 export interface IRoom {

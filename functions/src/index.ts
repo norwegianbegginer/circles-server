@@ -179,6 +179,56 @@ export const accountLogin = functions.https.onRequest(async (request, response) 
 });
 
 /**
+ * @description Get personalized suggestions for account.
+ * @argument {string} account_id
+ * @version 1.0.0
+ * @example /accountGetSuggestions?account_id=[ACCOUNT_ID]
+ */
+export const accountGetSuggestions = functions.https.onRequest(async (request, response) => {
+    const { account_id } = request.query as { account_id: string };
+
+    if (!account_id) {
+        response.json(makeResponse(404, null, "Account id not provided."));
+        return;
+    }
+
+    const account = await getAccountById(account_id);
+
+    const suggestions: TSuggestion[] = [];
+
+    const getSuggestions = async () => {
+        if (!account || !Array.isArray(account.contacts)) return;
+
+        // tslint:disable-next-line: prefer-for-of
+        for (let i = 0; i < account.contacts.length; i++) {
+            const last_contacted = account.contacts[i].last_contacted;
+            const contact = await getAccountById(account.contacts[i].account_id);
+
+            if (!contact) return;
+
+            if (last_contacted) {
+                const diffDays = moment().diff(moment(last_contacted), "days");
+
+                if (diffDays > 4) {
+                    suggestions.push({
+                        type: "long-not-messaged",
+                        payload: { account_id: contact.id }
+                    })
+                }
+            } else {
+                suggestions.push({
+                    type: "never-messaged",
+                    payload: { account_id: contact.id }
+                })
+            }
+        }
+    }
+    await getSuggestions();
+
+    response.json(makeResponse(200, suggestions));
+});
+
+/**
  * @description Find account by email or label.
  * @argument {string} email  
  * @argument {string} label  
