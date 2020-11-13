@@ -22,7 +22,7 @@ const db = admin.firestore();
 /**
  * @description Create a new account. 
  * @version 1.0.0
- * @example /accountCreate?email=cool@email.com&password=coolpassword
+ * @example /accountCreate?email=[EMAIL-ADDRESS]&password=[PASSWORD]
  */
 export const accountCreate = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>)  => {
     const { email, password, label } = request.query as { email: string, password: string, label?: string };
@@ -69,7 +69,7 @@ export const accountCreate = functions.https.onRequest(async (request: functions
  * @version 1.0.0
  * @argument {string} account_id
  * @argument {Partial<IAccount>} changes
- * @example /accountChange?account_id=n3AOwQTERDBXCnEffInV&changes={"name": "Mike", "surname": "Eling", "avatar_url": "https://google.com/", "label": "DRFR0ST"}
+ * @example /accountChange?account_id=[ACCOUNT_ID]&changes={"name": "Mike", "surname": "Eling", "avatar_url": "https://google.com/", "label": "DRFR0ST"}
  */
 export const accountChange = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>)  => {
     const { account_id, changes } = request.query as { account_id: string, changes: Partial<IAccount> };
@@ -107,6 +107,7 @@ export const accountChange = functions.https.onRequest(async (request: functions
         return;
     }
 
+    // @ts-ignore
     delete account.id;
 
     if(account?.flags?.includes("needs_init"))
@@ -125,7 +126,7 @@ export const accountChange = functions.https.onRequest(async (request: functions
  * @description Get account info by id.
  * @argument {string} account_id  
  * @version 1.0.0
- * @example /accountInfo?account_id=jakiesId
+ * @example /accountInfo?account_id=[ACCOUNT_ID]
  */
 export const accountInfo = functions.https.onRequest(async (request, response)  => {
     const { account_id, rooms, flags, contacts } = request.query as { account_id: string, rooms?: boolean, flags?: boolean, contacts?: boolean };
@@ -158,7 +159,7 @@ export const accountInfo = functions.https.onRequest(async (request, response)  
  * @description Authorize account with token.
  * @argument {string} token
  * @version 1.0.0
- * @example /accountLogin?token=jakiesId
+ * @example /accountLogin?token=[ACCOUNT_ID]
  */
 export const accountLogin = functions.https.onRequest(async (request, response)  => {
     const { token } = request.query as { token: string };
@@ -233,7 +234,7 @@ export const accountGetSuggestions = functions.https.onRequest(async (request, r
  * @argument {string} email  
  * @argument {string} label  
  * @version 1.0.0
- * @example /accountFind?email=jakiesId
+ * @example /accountFind?email=[EMAIL-ADDRESS]
  */
 export const accountFind = functions.https.onRequest(async (request, response)  => {
     const { email, label } = request.query as { email?: string, label?: string };
@@ -293,7 +294,7 @@ export const roomList = functions.https.onRequest(async (request: functions.http
  * @description Get room info by id.
  * @argument {string} room_id 
  * @version 1.0.0
- * @example /roomInfo?room_id=idroom
+ * @example /roomInfo?room_id=[ROOM_ID]
  */
 export const roomInfo = functions.https.onRequest(async (request, response)  => {
     const { room_id, accounts } = request.query as { room_id: string, accounts?: boolean };
@@ -321,7 +322,7 @@ export const roomInfo = functions.https.onRequest(async (request, response)  => 
  * @argument {string} account_id
  * @argument {string} room_id 
  * @version 1.0.0-beta.1
- * @example /checkRoomAccess?account_id=jakiesid?room_id=jakiesid
+ * @example /checkRoomAccess?account_id=[ACCOUNT_ID]?room_id=[ROOM_ID]
  */
 export const checkRoomAccess = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>)  => {
     const { account_id, room_id } = request.query as { account_id: string, room_id: string };
