@@ -3,7 +3,9 @@ import * as admin from "firebase-admin";
 import { makeResponse } from '../utils';
 import { getAccountsByIds } from '../Accounts/utils';
 import { getRooms, getRoomById } from './utils';
+import * as cors from 'cors';
 
+const corsHandler = cors({ origin: true });
 const db = admin.firestore();
 
 /**
@@ -13,14 +15,16 @@ const db = admin.firestore();
  * @example /room-roomList?volume=5
  */
 export const roomList = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
-    const { volume } = request.query as { volume?: number };
+    corsHandler(request, response, async () => {
+        const { volume } = request.query as { volume?: number };
 
-    const rooms = await getRooms();
+        const rooms = await getRooms();
 
-    if (volume && rooms.length > volume)
-        rooms.length = volume;
+        if (volume && rooms.length > volume)
+            rooms.length = volume;
 
-    response.json(makeResponse(200, rooms));
+        response.json(makeResponse(200, rooms));
+    });
 });
 
 /**
@@ -30,24 +34,27 @@ export const roomList = functions.https.onRequest(async (request: functions.http
  * @example /room-roomInfo?room_id=[ROOM_ID]
  */
 export const roomInfo = functions.https.onRequest(async (request, response) => {
-    const { room_id, accounts } = request.query as { room_id: string, accounts?: boolean };
+    corsHandler(request, response, async () => { 
 
-    if (!room_id) {
-        response.json(makeResponse(400, undefined, "Room id not provided."))
-        return;
-    }
-
-    const room = await getRoomById(room_id);
-
-    if (!room) {
-        response.json(makeResponse(404, undefined, "Room not found."))
-        return;
-    }
-
-    if ((!!accounts) == true)
-        room.accounts = await getAccountsByIds(room.access);
-
-    response.json(makeResponse(200, { ...room }));
+        const { room_id, accounts } = request.query as { room_id: string, accounts?: boolean };
+    
+        if (!room_id) {
+            response.json(makeResponse(400, undefined, "Room id not provided."))
+            return;
+        }
+    
+        const room = await getRoomById(room_id);
+    
+        if (!room) {
+            response.json(makeResponse(404, undefined, "Room not found."))
+            return;
+        }
+    
+        if ((!!accounts) == true)
+            room.accounts = await getAccountsByIds(room.access);
+    
+        response.json(makeResponse(200, { ...room }));
+    });
 });
 
 /**
@@ -58,29 +65,32 @@ export const roomInfo = functions.https.onRequest(async (request, response) => {
  * @example /room-checkRoomAccess?account_id=[ACCOUNT_ID]?room_id=[ROOM_ID]
  */
 export const checkRoomAccess = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
-    const { account_id, room_id } = request.query as { account_id: string, room_id: string };
+    corsHandler(request, response, async () => { 
 
-    // TODO: Wrap functions with classes for better query parsing.
-    if (!account_id) {
-        response.json(makeResponse(400, undefined, "Account id not provided."))
-        return;
-    }
-
-    if (!room_id) {
-        response.json(makeResponse(400, undefined, "Room id not provided."))
-        return;
-    }
-
-    const room = await getRoomById(room_id);
-
-    if (!room) {
-        response.json(makeResponse(404, undefined, "Room not found."))
-        return;
-    }
-
-    const hasAccess = !!room.access.includes(account_id);
-
-    response.json(makeResponse(200, { hasAccess }));
+        const { account_id, room_id } = request.query as { account_id: string, room_id: string };
+    
+        // TODO: Wrap functions with classes for better query parsing.
+        if (!account_id) {
+            response.json(makeResponse(400, undefined, "Account id not provided."))
+            return;
+        }
+    
+        if (!room_id) {
+            response.json(makeResponse(400, undefined, "Room id not provided."))
+            return;
+        }
+    
+        const room = await getRoomById(room_id);
+    
+        if (!room) {
+            response.json(makeResponse(404, undefined, "Room not found."))
+            return;
+        }
+    
+        const hasAccess = !!room.access.includes(account_id);
+    
+        response.json(makeResponse(200, { hasAccess }));
+    });
 });
 
 /**
@@ -89,26 +99,29 @@ export const checkRoomAccess = functions.https.onRequest(async (request: functio
  * @example /roomCreate?label=MyDevilRoom&invite=[account_id, account_id]
  */
 export const roomCreate = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
-    const { label, invite } = request.query as { label: string, invite: string };
+    corsHandler(request, response, async () => {
 
-    const parsedInvite = JSON.parse(JSON.stringify(invite))
+        const { label, invite } = request.query as { label: string, invite: string };
 
-    if (!parsedInvite) {
-        response.json(makeResponse(404, null, "Invite list not provided"));
-        return;
-    }
-    if (!label) {
-        response.json(makeResponse(404, null, "Label not provided"));
-        return;
-    }
+        const parsedInvite = JSON.parse(JSON.stringify(invite))
 
-    const new_room = {
-        label: label ?? "New room",
-        created_at: new Date(),
-        access: parsedInvite,
-    };
+        if (!parsedInvite) {
+            response.json(makeResponse(404, null, "Invite list not provided"));
+            return;
+        }
+        if (!label) {
+            response.json(makeResponse(404, null, "Label not provided"));
+            return;
+        }
 
-    const { id: room_id } = await db.collection("rooms").add(new_room);
+        const new_room = {
+            label: label ?? "New room",
+            created_at: new Date(),
+            access: parsedInvite,
+        };
 
-    response.json(makeResponse(200, { room_id }));
+        const { id: room_id } = await db.collection("rooms").add(new_room);
+
+        response.json(makeResponse(200, { room_id }));
+    });
 });
