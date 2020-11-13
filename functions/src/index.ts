@@ -3,7 +3,8 @@ import * as admin from "firebase-admin";
 import { makeResponse, validateEmail, getAvatarUrl } from './utils';
 import { getAccountById, getAccounts, getAccountByEmail, verifyAccountToken, getAccountsByIds } from './Accounts/utils';
 import { getRooms, getRoomById, getAccountRooms } from './Rooms/utils';
-import { IAccount } from './index.d';
+import { IAccount, TContact, TSuggestion } from './index.d';
+import * as moment from "moment";
 
 const serviceAccount = require("../serviceAccountKey.json");
 
@@ -55,7 +56,7 @@ export const accountCreate = functions.https.onRequest(async (request: functions
     const new_account = {
         email,
         label: label ?? "Hero",
-        created_at: new Date(),
+        created_at: moment().toDate(),
         flags: [ "needs_init" ],
     };
 
@@ -358,7 +359,7 @@ export const initializeAccount = functions.auth.user().onCreate(async (user) => 
         label: user.displayName ?? "Hero",
         avatar_url: user.photoURL ?? getAvatarUrl(user.displayName ?? "Hero"),
         email: user.email,
-        created_at: new Date(),
+        created_at: moment().toDate(),
         contacts: [],
         flags: [ "needs_init", "verify_email" ],
     };
