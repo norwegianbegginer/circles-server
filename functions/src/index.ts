@@ -256,6 +256,186 @@ export const accountFind = functions.https.onRequest(async (request, response)  
 });
 
 /**
+ * @description Update a contact.
+ * @version 1.0.0
+ * @argument {string} account_id
+ * @argument {string} contact_id
+ * @argument {Partial<TContact>} changes
+ * @example /accountUpdateContact?account_id=[ACCOUNT_ID]&contact_id=[CONTACT_ACCOUNT_ID]&changes={last_contacted: [DATE], favorite: true}
+ */
+export const accountUpdateContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
+    const { account_id, contact_id, changes } = request.query as { account_id: string, contact_id: string, changes: Partial<TContact> };
+
+    if (!account_id) {
+        response.json(makeResponse(404, null, "Account id not provided."));
+        return;
+    }
+
+    if (!contact_id) {
+        response.json(makeResponse(404, null, "Contact id not provided."));
+        return;
+    }
+
+    if (!changes) {
+        response.json(makeResponse(404, null, "Changes do not provided."));
+        return;
+    }
+
+    let parsedChanges: Partial<TContact> = {};
+
+    // TODO: Fix types // Mike
+    try {
+        // @ts-ignore
+        parsedChanges = { ...JSON.parse(changes) };
+    } catch (err) {
+        response.json(makeResponse(500, null, err.message));
+        return;
+    }
+
+    if (Object.keys(parsedChanges).length <= 0) {
+        response.json(makeResponse(404, null, "No changes provided."));
+        return;
+    }
+
+    if (parsedChanges.last_contacted !== undefined && !moment(parsedChanges.last_contacted).isValid()) {
+        response.json(makeResponse(404, null, "Last contacted date is invalid."));
+        return;
+    }
+
+    const account = await getAccountById(account_id);
+
+    if (!account) {
+        response.json(makeResponse(404, null, "Account not found."));
+        return;
+    }
+
+    if (!account.contacts || account.contacts.length === 0) {
+        response.json(makeResponse(404, null, "Account has no contacts."));
+        return;
+    }
+
+    const contacts = (account?.contacts ?? []).map((_contact: TContact) => {
+        if (_contact.account_id === contact_id) {
+            return {
+                ..._contact,
+                favorite: parsedChanges?.favorite ?? _contact.favorite,
+                last_contacted: parsedChanges?.last_contacted ?? _contact.last_contacted
+            }
+        }
+        return _contact;
+    });
+
+    // @ts-ignore
+    delete account.id;
+
+    db.collection("users").doc(account_id).set({ ...account, contacts }).then(() => {
+        response.json(makeResponse(204));
+    })
+        .catch(err => {
+            response.json(makeResponse(500, null, err.message))
+        });
+
+});
+
+/**
+ * @description Add a contact.
+ * @version 1.0.0
+ * @argument {string} account_id
+ * @argument {string} contact_id
+ * @example /accountAddContact?account_id=[ACCOUNT_ID]&contact_id=[CONTACT_ACCOUNT_ID]
+ */
+export const accountAddContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
+    const { contact_id, account_id } = request.query as { account_id: string, contact_id: string };
+
+    if (!account_id) {
+        response.json(makeResponse(404, null, "Account id not provided."));
+        return;
+    }
+
+    if (!contact_id) {
+        response.json(makeResponse(404, null, "Contact id not provided."));
+        return;
+    }
+
+    const account = await getAccountById(account_id);
+
+    if (!account) {
+        response.json(makeResponse(404, null, "Account not found."));
+        return;
+    }
+
+    const contacts: TContact[] = [...(account.contacts ?? [])]
+
+    if (contacts.find(contact => contact?.account_id === contact_id)) {
+        response.json(makeResponse(404, null, "Contact already added."));
+        return;
+    }
+
+    contacts.push({
+        account_id: contact_id,
+        favorite: false
+    })
+
+    // @ts-ignore
+    delete account.id;
+
+    db.collection("users").doc(account_id).set({ ...account, contacts }).then(() => {
+        response.json(makeResponse(204));
+    })
+        .catch(err => {
+            response.json(makeResponse(500, null, err.message))
+        });
+
+});
+
+/**
+ * @description Delete a contact.
+ * @version 1.0.0
+ * @argument {string} account_id
+ * @argument {string} contact_id
+ * @example /accountDeleteContact?account_id=[ACCOUNT_ID]&contact_id=[CONTACT_ACCOUNT_ID]
+ */
+export const accountDeleteContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
+    const { contact_id, account_id } = request.query as { account_id: string, contact_id: string };
+
+    if (!account_id) {
+        response.json(makeResponse(404, null, "Account id not provided."));
+        return;
+    }
+
+    if (!contact_id) {
+        response.json(makeResponse(404, null, "Contact id not provided."));
+        return;
+    }
+
+    const account = await getAccountById(account_id);
+
+    if (!account) {
+        response.json(makeResponse(404, null, "Account not found."));
+        return;
+    }
+
+
+    if ((account.contacts ?? []).find(contact => contact?.account_id !== contact_id)) {
+        response.json(makeResponse(404, null, "Contact not found."));
+        return;
+    }
+
+    const contacts: TContact[] = [...(account.contacts ?? [])].filter(contact => contact.account_id !== contact_id);
+
+    // @ts-ignore
+    delete account.id;
+
+    db.collection("users").doc(account_id).set({ ...account, contacts }).then(() => {
+        response.json(makeResponse(204));
+    })
+        .catch(err => {
+            response.json(makeResponse(500, null, err.message))
+        });
+
+});
+
+/**
  * @description Get list of all accounts.
  * @argument {number} volume 
  * @version 1.0.0
