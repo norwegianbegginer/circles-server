@@ -13,7 +13,7 @@ export const getRoomById = async (id: string): Promise<IRoom | null> => {
         return null;
     }
     
-    return room.data() as IRoom;
+    return { ...room.data(), id } as IRoom;
 }
 
 /**

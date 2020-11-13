@@ -1,7 +1,10 @@
 import * as functions from 'firebase-functions';
+import * as admin from "firebase-admin";
 import { makeResponse } from '../utils';
 import { getAccountsByIds } from '../Accounts/utils';
 import { getRooms, getRoomById } from './utils';
+
+const db = admin.firestore();
 
 /**
  * @description Get list of all rooms.
@@ -78,4 +81,34 @@ export const checkRoomAccess = functions.https.onRequest(async (request: functio
     const hasAccess = !!room.access.includes(account_id);
 
     response.json(makeResponse(200, { hasAccess }));
+});
+
+/**
+ * @description Create a new room. 
+ * @version 1.0.0
+ * @example /roomCreate?label=MyDevilRoom&invite=[account_id, account_id]
+ */
+export const roomCreate = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
+    const { label, invite } = request.query as { label: string, invite: string };
+
+    const parsedInvite = JSON.parse(JSON.stringify(invite))
+
+    if (!parsedInvite) {
+        response.json(makeResponse(404, null, "Invite list not provided"));
+        return;
+    }
+    if (!label) {
+        response.json(makeResponse(404, null, "Label not provided"));
+        return;
+    }
+
+    const new_room = {
+        label: label ?? "New room",
+        created_at: new Date(),
+        access: parsedInvite,
+    };
+
+    const { id: room_id } = await db.collection("rooms").add(new_room);
+
+    response.json(makeResponse(200, { room_id }));
 });
