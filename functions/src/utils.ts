@@ -1,11 +1,13 @@
 //import { Dictionary } from "./index.d";
 
 type THttpStatus = 
-        200 // Success with payload
-    |   204 // Success without payload
-    |   400 // Request error
-    |   500 // Unexpected error
-    |   404 // Not found
+    200 // Success with payload
+    | 204 // Success without payload
+    | 400 // Request error
+    | 403 // Forbiden
+    | 404 // Not found
+    | 409 // Conflict
+    | 500 // Unexpected error
     ;
 
 export const makeResponse = (status: THttpStatus, data?: any, message?: string) => {

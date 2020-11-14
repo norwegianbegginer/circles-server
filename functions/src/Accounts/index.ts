@@ -12,6 +12,9 @@ const db = admin.firestore();
 
 /**
  * @description Create a new account. 
+ * @argument email
+ * @argument password
+ * @argument label
  * @version 1.0.0
  * @example /account-accountCreate?email=[EMAIL-ADDRESS]&password=[PASSWORD]
  */
@@ -20,27 +23,27 @@ export const accountCreate = functions.https.onRequest(async (request: functions
         const { email, password, label } = request.query as { email: string, password: string, label?: string };
     
         if (!email) {
-            response.json(makeResponse(404, null, "Email not provided"));
+            response.json(makeResponse(400, null, "Email not provided"));
             return;
         }
         if (!password) {
-            response.json(makeResponse(404, null, "Password not provided"));
+            response.json(makeResponse(400, null, "Password not provided"));
             return;
         }
     
         if (password.length < 12) {
-            response.json(makeResponse(404, null, "Password didn't meet requirements."));
+            response.json(makeResponse(400, null, "Password didn't meet requirements."));
             return;
         }
     
         if (!validateEmail(email)) {
-            response.json(makeResponse(404, null, "Email is not valid."));
+            response.json(makeResponse(400, null, "Email is not valid."));
             return;
         }
     
         const accounts = await getAccounts();
         if (!!accounts.find(account => account.email !== undefined && account.email === email)) {
-            response.json(makeResponse(404, null, "Account with this email already exists."));
+            response.json(makeResponse(409, null, "Account with this email already exists."));
             return;
         }
     
@@ -136,7 +139,7 @@ export const accountInfo = functions.https.onRequest(async (request, response) =
         const account = await getAccountById(account_id);
     
         if (!account) {
-            response.json(makeResponse(404, undefined, "Account not found."))
+            response.json(makeResponse(409, undefined, "Account not found."))
             return;
         }
     
