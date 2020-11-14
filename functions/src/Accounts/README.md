@@ -223,7 +223,7 @@ GET /account-accountGetSuggestions?account_id=Yyp8XSdOC6epPvcjPMw5LJMtsIT2
 ##### Types
 type | description | payload
 --- | --- | ---
-`long-not-messaged` | When the user has not contacted a person for a long time. Provides account_id of the person in payload. | `{ account_id: string }`
+`long-not-messaged` | When the user has not contacted a person for a long time (by default 4 days). Provides account_id of the person in payload. | `{ account_id: string }`
 `never-messaged` | When the user has never contacted a person. Provides account_id of the person in payload. | `{ account_id: string }`
 
 More coming soon...
