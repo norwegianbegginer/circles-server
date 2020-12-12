@@ -24,6 +24,7 @@ export interface IAccount {
     flags?: string[];
     rooms?: IRoom[];
     friends?: IFriend[];
+    invites?: TFriendInvite[];
 }
 
 export type TAccountDetails = {
@@ -37,6 +38,13 @@ export type TAccountDetails = {
 export type TAccountContact = {
     email: string;
     phone?: string;
+}
+
+export type TFriendInvite = {
+    id: string;
+    account_id: string;
+    created_at: Date;
+    status: "pending" | "waiting" | "resolved" | "rejected";
 }
 
 /**

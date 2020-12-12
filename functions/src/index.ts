@@ -26,6 +26,7 @@ export const initializeAccount = functions.auth.user().onCreate(async (user) => 
         contact: { email: user.email as unknown as string },
         created_at: moment().toDate(),
         friends: [],
+        invites: [],
         flags: [ "needs_init", "verify_email" ],
     };
 

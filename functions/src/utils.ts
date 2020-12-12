@@ -24,6 +24,12 @@ export function getAvatarUrl(label:string) {
     return `https://eu.ui-avatars.com/api/?name=${label}`
 }
 
+export function ensureArray<T = any[]>(arr: any): T {
+    if (Array.isArray(arr)) return [...arr] as unknown as T;
+
+    return [] as unknown as T;
+}
+
 // TODO: Implement!
 // export const parseQuery = ( query: Dictionary<string>, types: Dictionary<string> ) => {
 //     let parsedQuery: Dictionary<any> = {};
