@@ -23,9 +23,9 @@ export const initializeAccount = functions.auth.user().onCreate(async (user) => 
     const new_account: Partial<IAccount> = {
         label: user.displayName ?? "Hero",
         avatar_url: user.photoURL ?? getAvatarUrl(user.displayName ?? "Hero"),
-        email: user.email,
+        contact: { email: user.email as unknown as string },
         created_at: moment().toDate(),
-        contacts: [],
+        friends: [],
         flags: [ "needs_init", "verify_email" ],
     };
 

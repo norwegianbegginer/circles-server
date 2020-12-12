@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 import { makeResponse, validateEmail } from '../utils';
 import { getAccountById, getAccounts, getAccountByEmail, verifyAccountToken } from './utils';
 import { getAccountRooms } from '../Rooms/utils';
-import { IAccount, TContact, TSuggestion } from '../index.d';
+import { IAccount, IFriend, TSuggestion } from '../index.d';
 import * as moment from "moment";
 import * as cors from 'cors';
 
@@ -42,16 +42,18 @@ export const accountCreate = functions.https.onRequest(async (request: functions
         }
     
         const accounts = await getAccounts();
-        if (!!accounts.find(account => account.email !== undefined && account.email === email)) {
+        if (!!accounts.find(account => account.contact.email !== undefined && account.contact.email === email)) {
             response.json(makeResponse(409, null, "Account with this email already exists."));
             return;
         }
     
         const new_account = {
-            email,
             label: label ?? "Hero",
             created_at: moment().toDate(),
             flags: ["needs_init"],
+            contact: {
+                email
+            }
         };
     
         const { id: account_id } = await db.collection("users").add(new_account);
@@ -65,7 +67,7 @@ export const accountCreate = functions.https.onRequest(async (request: functions
  * @version 1.0.0
  * @argument {string} account_id
  * @argument {Partial<IAccount>} changes
- * @example /account-accountChange?account_id=[ACCOUNT_ID]&changes={"name": "Mike", "surname": "Eling", "avatar_url": "https://google.com/", "label": "DRFR0ST"}
+ * @example /account-accountChange?account_id=[ACCOUNT_ID]&changes={"avatar_url": "https://google.com/", "label": "DRFR0ST", "details": { "first_name": "Mike" }}
  */
 export const accountChange = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
@@ -107,6 +109,8 @@ export const accountChange = functions.https.onRequest(async (request: functions
     
         // @ts-ignore
         delete account.id;
+        // @ts-ignore
+        delete parsedChanges?.contact;
     
         if (account?.flags?.includes("needs_init"))
             account.flags.splice(account.flags.indexOf("needs_init"), 1);
@@ -122,14 +126,17 @@ export const accountChange = functions.https.onRequest(async (request: functions
 
 /**
  * @description Get account info by id.
- * @argument {string} account_id  
- * @version 1.0.0
+ * @argument {string} account_id (required)
+ * @argument {boolean} rooms (optional / false)
+ * @argument {boolean} flags (optional / false)
+ * @argument {boolean} friends (optional / false)
+ * @version 2.0.0
  * @example /account-accountInfo?account_id=[ACCOUNT_ID]
  */
 export const accountInfo = functions.https.onRequest(async (request, response) => {
     corsHandler(request, response, async () => {
 
-        const { account_id, rooms, flags, contacts } = request.query as { account_id: string, rooms?: boolean, flags?: boolean, contacts?: boolean };
+        const { account_id, rooms, flags, friends } = request.query as { account_id: string, rooms?: boolean, flags?: boolean, friends?: boolean };
     
         if (!account_id) {
             response.json(makeResponse(400, undefined, "Account id not provided."))
@@ -149,8 +156,8 @@ export const accountInfo = functions.https.onRequest(async (request, response) =
         if ((!!flags) !== true)
             delete account.flags;
     
-        if ((!!contacts) !== true)
-            delete account.contacts;
+        if ((!!friends) !== true)
+            delete account.friends;
     
         response.json(makeResponse(200, { ...account }));
     });
@@ -185,7 +192,7 @@ export const accountLogin = functions.https.onRequest(async (request, response) 
 /**
  * @description Get personalized suggestions for account.
  * @argument {string} account_id
- * @version 1.0.0
+ * @version 1.0.1
  * @example /account-accountGetSuggestions?account_id=[ACCOUNT_ID]
  */
 export const accountGetSuggestions = functions.https.onRequest(async (request, response) => {
@@ -203,14 +210,14 @@ export const accountGetSuggestions = functions.https.onRequest(async (request, r
         const suggestions: TSuggestion[] = [];
     
         const getSuggestions = async () => {
-            if (!account || !Array.isArray(account.contacts)) return;
+            if (!account || !Array.isArray(account.friends)) return;
     
             // tslint:disable-next-line: prefer-for-of
-            for (let i = 0; i < account.contacts.length; i++) {
-                const last_contacted = account.contacts[i].last_contacted;
-                const contact = await getAccountById(account.contacts[i].account_id);
+            for (let i = 0; i < account.friends.length; i++) {
+                const last_contacted = account.friends[i].last_contacted;
+                const friend = await getAccountById(account.friends[i].account_id);
     
-                if (!contact) return;
+                if (!friend) return;
     
                 if (last_contacted) {
                     const diffDays = moment().diff(moment(last_contacted), "days");
@@ -218,13 +225,13 @@ export const accountGetSuggestions = functions.https.onRequest(async (request, r
                     if (diffDays > 4) {
                         suggestions.push({
                             type: "long-not-messaged",
-                            payload: { account_id: contact.id }
+                            payload: { account_id: friend.id }
                         })
                     }
                 } else {
                     suggestions.push({
                         type: "never-messaged",
-                        payload: { account_id: contact.id }
+                        payload: { account_id: friend.id }
                     })
                 }
             }
@@ -264,23 +271,23 @@ export const accountFind = functions.https.onRequest(async (request, response) =
 
 /**
  * @description Update a contact.
- * @version 1.0.0
+ * @version 2.0.0
  * @argument {string} account_id
- * @argument {string} contact_id
- * @argument {Partial<TContact>} changes
- * @example /account-accountUpdateContact?account_id=[ACCOUNT_ID]&contact_id=[CONTACT_ACCOUNT_ID]&changes={last_contacted: [DATE], favorite: true}
+ * @argument {string} friend_id
+ * @argument {Partial<IFriend>} changes
+ * @example /account-accountUpdateContact?account_id=[ACCOUNT_ID]&friend_id=[CONTACT_ACCOUNT_ID]&changes={last_contacted: [DATE], favorite: true}
  */
 export const accountUpdateContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
-        const { account_id, contact_id, changes } = request.query as { account_id: string, contact_id: string, changes: Partial<TContact> };
+        const { account_id, friend_id, changes } = request.query as { account_id: string, friend_id: string, changes: Partial<IFriend> };
     
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
     
-        if (!contact_id) {
-            response.json(makeResponse(404, null, "Contact id not provided."));
+        if (!friend_id) {
+            response.json(makeResponse(404, null, "Friend id not provided."));
             return;
         }
     
@@ -289,7 +296,7 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
             return;
         }
     
-        let parsedChanges: Partial<TContact> = {};
+        let parsedChanges: Partial<IFriend> = {};
     
         // TODO: Fix types // Mike
         try {
@@ -317,13 +324,13 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
             return;
         }
     
-        if (!account.contacts || account.contacts.length === 0) {
-            response.json(makeResponse(404, null, "Account has no contacts."));
+        if (!account.friends || account.friends.length === 0) {
+            response.json(makeResponse(404, null, "Got no friends yet."));
             return;
         }
     
-        const contacts = (account?.contacts ?? []).map((_contact: TContact) => {
-            if (_contact.account_id === contact_id) {
+        const friends = (account?.friends ?? []).map((_contact: IFriend) => {
+            if (_contact.account_id === friend_id) {
                 return {
                     ..._contact,
                     favorite: parsedChanges?.favorite ?? _contact.favorite,
@@ -336,7 +343,7 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
         // @ts-ignore
         delete account.id;
     
-        db.collection("users").doc(account_id).set({ ...account, contacts }).then(() => {
+        db.collection("users").doc(account_id).set({ ...account, friends }).then(() => {
             response.json(makeResponse(204));
         })
             .catch(err => {
@@ -347,22 +354,22 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
 
 /**
  * @description Add a contact.
- * @version 1.0.0
+ * @version 2.0.0
  * @argument {string} account_id
- * @argument {string} contact_id
- * @example /account-accountAddContact?account_id=[ACCOUNT_ID]&contact_id=[CONTACT_ACCOUNT_ID]
+ * @argument {string} friend_id
+ * @example /account-accountAddContact?account_id=[ACCOUNT_ID]&friend_id=[CONTACT_ACCOUNT_ID]
  */
 export const accountAddContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
-        const { contact_id, account_id } = request.query as { account_id: string, contact_id: string };
+        const { friend_id, account_id } = request.query as { account_id: string, friend_id: string };
     
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
     
-        if (!contact_id) {
-            response.json(makeResponse(404, null, "Contact id not provided."));
+        if (!friend_id) {
+            response.json(makeResponse(404, null, "Friend id not provided."));
             return;
         }
     
@@ -373,22 +380,22 @@ export const accountAddContact = functions.https.onRequest(async (request: funct
             return;
         }
     
-        const contacts: TContact[] = [...(account.contacts ?? [])]
+        const friends: IFriend[] = [...(account.friends ?? [])]
     
-        if (contacts.find(contact => contact?.account_id === contact_id)) {
-            response.json(makeResponse(404, null, "Contact already added."));
+        if (friends.find(contact => contact?.account_id === friend_id)) {
+            response.json(makeResponse(404, null, "Friend already added."));
             return;
         }
     
-        contacts.push({
-            account_id: contact_id,
+        friends.push({
+            account_id: friend_id,
             favorite: false
         })
     
         // @ts-ignore
         delete account.id;
     
-        db.collection("users").doc(account_id).set({ ...account, contacts }).then(() => {
+        db.collection("users").doc(account_id).set({ ...account, friends }).then(() => {
             response.json(makeResponse(204));
         })
             .catch(err => {
@@ -400,21 +407,21 @@ export const accountAddContact = functions.https.onRequest(async (request: funct
 
 /**
  * @description Delete a contact.
- * @version 1.0.0
+ * @version 2.0.0
  * @argument {string} account_id
- * @argument {string} contact_id
- * @example /account-accountDeleteContact?account_id=[ACCOUNT_ID]&contact_id=[CONTACT_ACCOUNT_ID]
+ * @argument {string} friend_id
+ * @example /account-accountDeleteContact?account_id=[ACCOUNT_ID]&friend_id=[FRIEND_ACCOUNT_ID]
  */
 export const accountDeleteContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
-        const { contact_id, account_id } = request.query as { account_id: string, contact_id: string };
+        const { friend_id, account_id } = request.query as { account_id: string, friend_id: string };
     
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
     
-        if (!contact_id) {
+        if (!friend_id) {
             response.json(makeResponse(404, null, "Contact id not provided."));
             return;
         }
@@ -427,17 +434,17 @@ export const accountDeleteContact = functions.https.onRequest(async (request: fu
         }
     
     
-        if ((account.contacts ?? []).find(contact => contact?.account_id !== contact_id)) {
+        if ((account.friends ?? []).find(contact => contact?.account_id !== friend_id)) {
             response.json(makeResponse(404, null, "Contact not found."));
             return;
         }
     
-        const contacts: TContact[] = [...(account.contacts ?? [])].filter(contact => contact.account_id !== contact_id);
+        const friends: IFriend[] = [...(account.friends ?? [])].filter(contact => contact.account_id !== friend_id);
     
         // @ts-ignore
         delete account.id;
     
-        db.collection("users").doc(account_id).set({ ...account, contacts }).then(() => {
+        db.collection("users").doc(account_id).set({ ...account, friends }).then(() => {
             response.json(makeResponse(204));
         })
             .catch(err => {
