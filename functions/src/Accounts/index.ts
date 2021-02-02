@@ -49,7 +49,7 @@ export const accountCreate = functions.https.onRequest(async (request: functions
         }
     
         const new_account = {
-            label: label ?? "Hero",
+            label: label ?? "Unknown",
             created_at: moment().toDate(),
             flags: ["needs_init"],
             contact: {
@@ -116,6 +116,8 @@ export const accountChange = functions.https.onRequest(async (request: functions
         delete parsedChanges?.rooms;
         // @ts-ignore
         delete parsedChanges?.invites;
+        // @ts-ignore
+        delete parsedChanges?.storage;
     
         if (account?.flags?.includes("needs_init"))
             account.flags.splice(account.flags.indexOf("needs_init"), 1);
@@ -166,6 +168,10 @@ export const accountInfo = functions.https.onRequest(async (request, response) =
 
         if ((!!invites) !== true)
             delete account.invites;
+
+        // Storage can be gathered only by dedicated functions.
+        if (account.storage)
+            delete account.storage;
 
         response.json(makeResponse(200, { ...account }));
     });
@@ -647,4 +653,83 @@ export const accountAnswerInvite = functions.https.onRequest(async (request: fun
         }
     });
 
+});
+
+
+/**
+ * @description Get account's storage.
+ * @argument {string} account_id (required)
+ * @argument {boolean} key (required)
+ * @version 1.0.0
+ * @example /account-accountStorageGet?account_id=[ACCOUNT_ID]&key=[FIELD_KEY]
+ */
+export const accountStorageGet = functions.https.onRequest(async (request, response) => {
+    corsHandler(request, response, async () => {
+
+        const { account_id, key } = request.query as { account_id: string, key: string };
+
+        if (!account_id) {
+            response.json(makeResponse(400, undefined, "Account id not provided."))
+            return;
+        }
+
+        const account = await getAccountById(account_id);
+
+        if (!account) {
+            response.json(makeResponse(409, undefined, "Account not found."))
+            return;
+        }
+
+        const storage = account.storage ?? {};
+        const value = storage[key];
+
+        if (!value) {
+            response.json(makeResponse(404, undefined, `Storage field with key ${key} doesn't exist.`));
+            return;
+        }
+
+        response.json(makeResponse(200, value));
+    });
+});
+
+/**
+ * @description Set account's storage.
+ * @argument {string} account_id (required)
+ * @argument {boolean} key (required)
+ * @argument {boolean} value (required)
+ * @version 1.0.0
+ * @example /account-accountStorageSet?account_id=[ACCOUNT_ID]&key=[FIELD_NEY]&value=[FIELD_VALUE]
+ */
+export const accountStorageSet = functions.https.onRequest(async (request, response) => {
+    corsHandler(request, response, async () => {
+
+        const { account_id, key, value } = request.query as { account_id: string, key: string, value: any };
+
+        if (!account_id) {
+            response.json(makeResponse(400, undefined, "Account id not provided."))
+            return;
+        }
+
+        const account = await getAccountById(account_id);
+
+        if (!account) {
+            response.json(makeResponse(409, undefined, "Account not found."))
+            return;
+        }
+
+        const storage = account.storage ?? {};
+        storage[key] = value;
+
+        if (!value) {
+            response.json(makeResponse(404, undefined, `Storage field with key ${key} doesn't exist.`));
+            return;
+        }
+
+        try {
+            await db.collection("users").doc(account_id).set({ ...account, storage });
+            response.json(makeResponse(204, null));
+        } catch (err) {
+            response.json(makeResponse(500, null, err.message));
+        }
+    });
 });

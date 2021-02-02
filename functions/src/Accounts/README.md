@@ -227,3 +227,76 @@ type | description | payload
 `never-messaged` | When the user has never contacted a person. Provides account_id of the person in payload. | `{ account_id: string }`
 
 More coming soon...
+
+## AccountStorageGet
+`account-accountStorageGet`
+
+Returns value for a storage key.
+
+### Request
+
+name | type | description | required | default
+--- | --- | --- | --- | ---
+account_id | `string` | Account unique identifier. | yes |
+key | `string` | Key of the field that should be returned. | yes | 
+
+
+### Response
+
+status | data type | message | state
+--- | --- | --- | ---
+`200` | `IAccount` | `undefined` | ✔️
+`404` | `undefined` | `Field does not exist.` | ❌
+`409` | `undefined` | `Account with this id does not exists.` | ❌
+
+
+### Example
+
+#### Request
+```
+GET /account-accountStorageGet?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=themeId
+```
+
+#### Response
+```json
+{
+   "status": 200,
+   "data": "1234"
+}
+```
+
+## AccountStorageSet
+`account-accountStorageSet`
+
+Sets value for a storage key.
+
+### Request
+
+name | type | description | required | default
+--- | --- | --- | --- | ---
+account_id | `string` | Account unique identifier. | yes |
+key | `string` | Key of the field that should be returned. | yes | 
+value | `any` | Value for the field that will be set. | yes | 
+
+
+### Response
+
+status | data type | message | state
+--- | --- | --- | ---
+`200` | `IAccount` | `undefined` | ✔️
+`409` | `undefined` | `Account with this id does not exists.` | ❌
+
+
+### Example
+
+#### Request
+```
+GET /account-accountStorageSet?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=themeId&value=1234
+```
+
+#### Response
+```json
+{
+   "status": 204
+}
+```

@@ -20,6 +20,7 @@ export interface IAccount {
 
     contact: TAccountContact,
     details: TAccountDetails;
+    storage?: Dictionary<any>;
 
     flags?: string[];
     rooms?: IRoom[];
