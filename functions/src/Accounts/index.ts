@@ -660,7 +660,7 @@ export const accountAnswerInvite = functions.https.onRequest(async (request: fun
  * @description Get account's storage.
  * @argument {string} account_id (required)
  * @argument {boolean} key (required)
- * @version 1.0.0
+ * @version 1.1.0
  * @example /account-accountStorageGet?account_id=[ACCOUNT_ID]&key=[FIELD_KEY]
  */
 export const accountStorageGet = functions.https.onRequest(async (request, response) => {
@@ -681,29 +681,31 @@ export const accountStorageGet = functions.https.onRequest(async (request, respo
         }
 
         const storage = account.storage ?? {};
-        const value = storage[key];
 
-        if (!value) {
+        if (storage[key] === undefined) {
             response.json(makeResponse(404, undefined, `Storage field with key ${key} doesn't exist.`));
             return;
         }
 
-        response.json(makeResponse(200, value));
+        const [value, type] = storage[key];
+
+        response.json(makeResponse(200, { value, type }));
     });
 });
 
 /**
  * @description Set account's storage.
  * @argument {string} account_id (required)
- * @argument {boolean} key (required)
- * @argument {boolean} value (required)
- * @version 1.0.0
- * @example /account-accountStorageSet?account_id=[ACCOUNT_ID]&key=[FIELD_NEY]&value=[FIELD_VALUE]
+ * @argument {string} key (required)
+ * @argument {any} value (required)
+ * @argument {string} type (optional)
+ * @version 1.1.0
+ * @example /account-accountStorageSet?account_id=[ACCOUNT_ID]&key=[FIELD_NEY]&value=[FIELD_VALUE]&type=[VALUE_TYPE]
  */
 export const accountStorageSet = functions.https.onRequest(async (request, response) => {
     corsHandler(request, response, async () => {
 
-        const { account_id, key, value } = request.query as { account_id: string, key: string, value: any };
+        const { account_id, key, value, type } = request.query as { account_id: string, key: string, value: any, type?: string };
 
         if (!account_id) {
             response.json(makeResponse(400, undefined, "Account id not provided."))
@@ -718,12 +720,7 @@ export const accountStorageSet = functions.https.onRequest(async (request, respo
         }
 
         const storage = account.storage ?? {};
-        storage[key] = value;
-
-        if (!value) {
-            response.json(makeResponse(404, undefined, `Storage field with key ${key} doesn't exist.`));
-            return;
-        }
+        storage[key] = [value, type ?? typeof value];
 
         try {
             await db.collection("users").doc(account_id).set({ ...account, storage });

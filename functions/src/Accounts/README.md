@@ -261,7 +261,7 @@ GET /account-accountStorageGet?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=theme
 ```json
 {
    "status": 200,
-   "data": "1234"
+   "data": { "value": "1234", "type": "number" }
 }
 ```
 
@@ -277,6 +277,7 @@ name | type | description | required | default
 account_id | `string` | Account unique identifier. | yes |
 key | `string` | Key of the field that should be returned. | yes | 
 value | `any` | Value for the field that will be set. | yes | 
+type | `string | number | date | object | array` | Type of the value that's being set. | no | `string`
 
 
 ### Response
