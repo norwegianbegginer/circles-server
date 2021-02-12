@@ -1,0 +1,68 @@
+### AccountList
+GET https://us-central1-ping-82fee.cloudfunctions.net/account-accountList?volume=5 HTTP/1.1
+content-type: application/json
+
+
+### AccountInfo
+GET https://us-central1-ping-82fee.cloudfunctions.net/account-accountInfo?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2 HTTP/1.1
+content-type: application/json
+
+
+### AccountChange
+PUT https://us-central1-ping-82fee.cloudfunctions.net/account-accountChange?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&changes={"avatar_url": "https://source.unsplash.com/random", "label": "DRFR0ST", "details": { "first_name": "Mike" }} HTTP/1.1
+content-type: application/json
+
+
+### AccountFind
+GET https://us-central1-ping-82fee.cloudfunctions.net/account-accountFind?email=mike.eling97@gmail.com HTTP/1.1
+content-type: application/json
+
+
+### AccountGetSuggestions
+GET https://us-central1-ping-82fee.cloudfunctions.net/account-accountGetSuggestions?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2 HTTP/1.1
+content-type: application/json
+
+
+## Account's contacts (aka. friends)
+This will be deprecated when inviting system is fully functional.
+
+### AccountAddContact
+POST https://us-central1-ping-82fee.cloudfunctions.net/account-accountAddContact?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&friend_id=xdNfnKSLy1MHSJDJtRcdEJMdIhX2 HTTP/1.1
+content-type: application/json
+
+
+### AccountUpdateContact
+PUT https://us-central1-ping-82fee.cloudfunctions.net/account-accountUpdateContact?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&friend_id=xdNfnKSLy1MHSJDJtRcdEJMdIhX2&changes={"last_contacted": "Fri Feb 12 2021 16:02:08 GMT+0100 (Central European Standard Time)", "favorite": true} HTTP/1.1
+content-type: application/json
+
+
+### AccountDeleteContact
+PUT https://us-central1-ping-82fee.cloudfunctions.net/account-accountDeleteContact?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&friend_id=xdNfnKSLy1MHSJDJtRcdEJMdIhX2 HTTP/1.1
+content-type: application/json
+
+
+# Account's friends invites
+Work in progress, needs extensive testing!
+
+### AccountInviteFriend
+POST https://us-central1-ping-82fee.cloudfunctions.net/account-accountInviteFriend?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&friend_id=xdNfnKSLy1MHSJDJtRcdEJMdIhX2 HTTP/1.1
+content-type: application/json
+
+
+### AccountAnswerInvite
+POST https://us-central1-ping-82fee.cloudfunctions.net/account-accountAnswerInvite?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&friend_id=xdNfnKSLy1MHSJDJtRcdEJMdIhX2&invite_id=376fef8a-64af-4ccc-a0d7-65400e9b5b9b&accept=true HTTP/1.1
+content-type: application/json
+
+
+# Account's storage
+Mainly use for front-end persistent variables like themeId etc.
+
+
+### AccountStorageSet
+PUT https://us-central1-ping-82fee.cloudfunctions.net/account-accountStorageSet?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=myFav&value=assandpizza&type=string HTTP/1.1
+content-type: application/json
+
+
+### AccountStorageGet
+GET https://us-central1-ping-82fee.cloudfunctions.net/account-accountStorageGet?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=myFav HTTP/1.1
+content-type: application/json

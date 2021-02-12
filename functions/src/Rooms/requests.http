@@ -1,0 +1,18 @@
+### RoomList
+GET https://us-central1-ping-82fee.cloudfunctions.net/room-roomList?volume=5 HTTP/1.1
+content-type: application/json
+
+
+### RoomInfo
+GET https://us-central1-ping-82fee.cloudfunctions.net/room-roomInfo?room_id=5R3RM7T0CIYaDqi5TcJB HTTP/1.1
+content-type: application/json
+
+
+### CheckRoomAccess
+GET https://us-central1-ping-82fee.cloudfunctions.net/room-checkRoomAccess?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&room_id=5R3RM7T0CIYaDqi5TcJB HTTP/1.1
+content-type: application/json
+
+
+### RoomCreate
+POST https://us-central1-ping-82fee.cloudfunctions.net/roomCreate?label=MyDevilRoom&invite=[Ch1qe00LhqVr9fpxTaBNNjccvUG2, xdNfnKSLy1MHSJDJtRcdEJMdIhX2] HTTP/1.1
+content-type: application/json
