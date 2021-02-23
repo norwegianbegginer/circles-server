@@ -22,7 +22,7 @@ const db = admin.firestore();
 export const accountCreate = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
         const { email, password, label } = request.query as { email: string, password: string, label?: string };
-    
+
         if (!email) {
             response.json(makeResponse(400, null, "Email not provided"));
             return;
@@ -31,23 +31,23 @@ export const accountCreate = functions.https.onRequest(async (request: functions
             response.json(makeResponse(400, null, "Password not provided"));
             return;
         }
-    
+
         if (password.length < 12) {
             response.json(makeResponse(400, null, "Password didn't meet requirements."));
             return;
         }
-    
+
         if (!validateEmail(email)) {
             response.json(makeResponse(400, null, "Email is not valid."));
             return;
         }
-    
+
         const accounts = await getAccounts();
         if (!!accounts.find(account => account.contact.email !== undefined && account.contact.email === email)) {
             response.json(makeResponse(409, null, "Account with this email already exists."));
             return;
         }
-    
+
         const new_account = {
             label: label ?? "Unknown",
             created_at: moment().toDate(),
@@ -56,9 +56,9 @@ export const accountCreate = functions.https.onRequest(async (request: functions
                 email
             }
         };
-    
+
         const { id: account_id } = await db.collection("users").add(new_account);
-    
+
         response.json(makeResponse(200, { account_id }));
     });
 });
@@ -74,19 +74,19 @@ export const accountChange = functions.https.onRequest(async (request: functions
     corsHandler(request, response, async () => {
 
         const { account_id, changes } = request.query as { account_id: string, changes: Partial<IAccount> };
-    
+
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
-    
+
         if (!changes) {
             response.json(makeResponse(404, null, "Changes do not provided."));
             return;
         }
-    
+
         let parsedChanges = {};
-    
+
         // TODO: Fix types // Mike
         try {
             // @ts-ignore
@@ -95,19 +95,19 @@ export const accountChange = functions.https.onRequest(async (request: functions
             response.json(makeResponse(500, null, err.message));
             return;
         }
-    
+
         if (Object.keys(parsedChanges).length <= 0) {
             response.json(makeResponse(404, null, "No changes provided."));
             return;
         }
-    
+
         const account = await getAccountById(account_id);
-    
+
         if (!account) {
             response.json(makeResponse(404, null, "Account not found."));
             return;
         }
-    
+
         // @ts-ignore
         delete account.id;
         // @ts-ignore
@@ -118,10 +118,10 @@ export const accountChange = functions.https.onRequest(async (request: functions
         delete parsedChanges?.invites;
         // @ts-ignore
         delete parsedChanges?.storage;
-    
+
         if (account?.flags?.includes("needs_init"))
             account.flags.splice(account.flags.indexOf("needs_init"), 1);
-    
+
         db.collection("users").doc(account_id).set({ ...account, ...parsedChanges }).then(() => {
             response.json(makeResponse(204));
         })
@@ -144,25 +144,25 @@ export const accountInfo = functions.https.onRequest(async (request, response) =
     corsHandler(request, response, async () => {
 
         const { account_id, rooms, flags, friends, invites } = request.query as { account_id: string, rooms?: boolean, flags?: boolean, friends?: boolean, invites?: boolean };
-    
+
         if (!account_id) {
             response.json(makeResponse(400, undefined, "Account id not provided."))
             return;
         }
-    
+
         const account = await getAccountById(account_id);
-    
+
         if (!account) {
             response.json(makeResponse(409, undefined, "Account not found."))
             return;
         }
-    
+
         if ((!!rooms) === true)
             account.rooms = await getAccountRooms(account_id);
-    
+
         if ((!!flags) !== true)
             delete account.flags;
-    
+
         if ((!!friends) !== true)
             delete account.friends;
 
@@ -184,21 +184,21 @@ export const accountInfo = functions.https.onRequest(async (request, response) =
  * @example /account-accountLogin?token=[ACCOUNT_ID]
  */
 export const accountLogin = functions.https.onRequest(async (request, response) => {
-    corsHandler(request, response, async () => { 
+    corsHandler(request, response, async () => {
         const { token } = request.query as { token: string };
-    
+
         if (!token) {
             response.json(makeResponse(400, undefined, "Token not provided."))
             return;
         }
-    
+
         const account_id = await verifyAccountToken(token);
-    
+
         if (typeof account_id !== "string") {
             response.json(makeResponse(404, undefined, "Token expired."))
             return;
         }
-    
+
         response.json(makeResponse(200, { account_id }));
     });
 });
@@ -213,29 +213,29 @@ export const accountGetSuggestions = functions.https.onRequest(async (request, r
     corsHandler(request, response, async () => {
 
         const { account_id } = request.query as { account_id: string };
-    
+
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
-    
+
         const account = await getAccountById(account_id);
-    
+
         const suggestions: TSuggestion[] = [];
-    
+
         const getSuggestions = async () => {
             if (!account || !Array.isArray(account.friends)) return;
-    
+
             // tslint:disable-next-line: prefer-for-of
             for (let i = 0; i < account.friends.length; i++) {
                 const last_contacted = account.friends[i].last_contacted;
                 const friend = await getAccountById(account.friends[i].account_id);
-    
+
                 if (!friend) return;
-    
+
                 if (last_contacted) {
                     const diffDays = moment().diff(moment(last_contacted), "days");
-    
+
                     if (diffDays > 4) {
                         suggestions.push({
                             type: "long-not-messaged",
@@ -251,7 +251,7 @@ export const accountGetSuggestions = functions.https.onRequest(async (request, r
             }
         }
         await getSuggestions();
-    
+
         response.json(makeResponse(200, suggestions));
     });
 });
@@ -266,19 +266,19 @@ export const accountGetSuggestions = functions.https.onRequest(async (request, r
 export const accountFind = functions.https.onRequest(async (request, response) => {
     corsHandler(request, response, async () => {
         const { email, label } = request.query as { email?: string, label?: string };
-    
+
         if (!email && !label) {
             response.json(makeResponse(400, undefined, "No query provided."))
             return;
         }
-    
+
         const account = await getAccountByEmail(email as string);
-    
+
         if (!account) {
             response.json(makeResponse(404, undefined, "Account not found."))
             return;
         }
-    
+
         response.json(makeResponse(200, { ...account }));
     });
 });
@@ -294,24 +294,24 @@ export const accountFind = functions.https.onRequest(async (request, response) =
 export const accountUpdateContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
         const { account_id, friend_id, changes } = request.query as { account_id: string, friend_id: string, changes: Partial<IFriend> };
-    
+
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
-    
+
         if (!friend_id) {
             response.json(makeResponse(404, null, "Friend id not provided."));
             return;
         }
-    
+
         if (!changes) {
             response.json(makeResponse(404, null, "Changes do not provided."));
             return;
         }
-    
+
         let parsedChanges: Partial<IFriend> = {};
-    
+
         // TODO: Fix types // Mike
         try {
             // @ts-ignore
@@ -320,29 +320,29 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
             response.json(makeResponse(500, null, err.message));
             return;
         }
-    
+
         if (Object.keys(parsedChanges).length <= 0) {
             response.json(makeResponse(404, null, "No changes provided."));
             return;
         }
-    
+
         if (parsedChanges.last_contacted !== undefined && !moment(parsedChanges.last_contacted).isValid()) {
             response.json(makeResponse(404, null, "Last contacted date is invalid."));
             return;
         }
-    
+
         const account = await getAccountById(account_id);
-    
+
         if (!account) {
             response.json(makeResponse(404, null, "Account not found."));
             return;
         }
-    
+
         if (!account.friends || account.friends.length === 0) {
             response.json(makeResponse(404, null, "Got no friends yet."));
             return;
         }
-    
+
         const friends = (account?.friends ?? []).map((_contact: IFriend) => {
             if (_contact.account_id === friend_id) {
                 return {
@@ -353,10 +353,10 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
             }
             return _contact;
         });
-    
+
         // @ts-ignore
         delete account.id;
-    
+
         db.collection("users").doc(account_id).set({ ...account, friends }).then(() => {
             response.json(makeResponse(204));
         })
@@ -376,39 +376,39 @@ export const accountUpdateContact = functions.https.onRequest(async (request: fu
 export const accountAddContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
         const { friend_id, account_id } = request.query as { account_id: string, friend_id: string };
-    
+
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
-    
+
         if (!friend_id) {
             response.json(makeResponse(404, null, "Friend id not provided."));
             return;
         }
-    
+
         const account = await getAccountById(account_id);
-    
+
         if (!account) {
             response.json(makeResponse(404, null, "Account not found."));
             return;
         }
-    
+
         const friends: IFriend[] = [...(account.friends ?? [])]
-    
+
         if (friends.find(contact => contact?.account_id === friend_id)) {
             response.json(makeResponse(404, null, "Friend already added."));
             return;
         }
-    
+
         friends.push({
             account_id: friend_id,
             favorite: false
         })
-    
+
         // @ts-ignore
         delete account.id;
-    
+
         db.collection("users").doc(account_id).set({ ...account, friends }).then(() => {
             response.json(makeResponse(204));
         })
@@ -429,35 +429,35 @@ export const accountAddContact = functions.https.onRequest(async (request: funct
 export const accountDeleteContact = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
         const { friend_id, account_id } = request.query as { account_id: string, friend_id: string };
-    
+
         if (!account_id) {
             response.json(makeResponse(404, null, "Account id not provided."));
             return;
         }
-    
+
         if (!friend_id) {
             response.json(makeResponse(404, null, "Contact id not provided."));
             return;
         }
-    
+
         const account = await getAccountById(account_id);
-    
+
         if (!account) {
             response.json(makeResponse(404, null, "Account not found."));
             return;
         }
-    
-    
+
+
         if ((account.friends ?? []).find(contact => contact?.account_id !== friend_id)) {
             response.json(makeResponse(404, null, "Contact not found."));
             return;
         }
-    
+
         const friends: IFriend[] = [...(account.friends ?? [])].filter(contact => contact.account_id !== friend_id);
-    
+
         // @ts-ignore
         delete account.id;
-    
+
         db.collection("users").doc(account_id).set({ ...account, friends }).then(() => {
             response.json(makeResponse(204));
         })
@@ -477,12 +477,12 @@ export const accountDeleteContact = functions.https.onRequest(async (request: fu
 export const accountList = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
     corsHandler(request, response, async () => {
         const { volume } = request.query as { volume?: number };
-    
+
         const accounts = await getAccounts();
-    
+
         if (volume && accounts.length > volume)
             accounts.length = volume;
-    
+
         response.json(makeResponse(200, accounts));
     });
 });
@@ -727,6 +727,40 @@ export const accountStorageSet = functions.https.onRequest(async (request, respo
             response.json(makeResponse(204, null));
         } catch (err) {
             response.json(makeResponse(500, null, err.message));
+        }
+    });
+});
+
+/**
+ * @description Delete account by id.
+ * @argument {string} account_id (required)
+ * @version 1.1.0
+ * @example /account-accountDelete?account_id=[ACCOUNT_ID]
+ */
+
+const accountDelete = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
+    corsHandler(request, response, async () => {
+        const { account_id } = request.query as { account_id: string };
+
+        if (!account_id) {
+            response.json(makeResponse(404, null, "Account id not provided."));
+            return;
+        }
+
+        const account = await getAccountById(account_id);
+
+        if (!account) {
+            response.json(makeResponse(404, null, "Account not found."));
+            return;
+        }
+
+        try {
+            await db.collection("users").doc(account_id).delete();
+            response.json(makeResponse(204));
+        }
+
+        catch (err) {
+            response.json(makeResponse(500, null, err.message))
         }
     });
 });

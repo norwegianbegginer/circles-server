@@ -301,3 +301,37 @@ GET /account-accountStorageSet?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=theme
    "status": 204
 }
 ```
+
+## AccountDelete
+`account-accountDelete`
+
+Delete account by id.
+
+### Request
+
+name | type | description | required | default
+--- | --- | --- | --- | ---
+account_id | `string` | Account unique identifier. | yes |
+
+
+### Response
+
+status | data type | message | state
+--- | --- | --- | ---
+`204` | `undefined` | `undefined` | ✔️
+`404` | `undefined` | `Account with this id does not exists.` | ❌
+
+
+### Example
+
+#### Request
+```
+DELETE /account-accountDelete?account_id=Ch1qe00LhqVr9fpxTaBNNjccvUG2&key=themeId&value=1234
+```
+
+#### Response
+```json
+{
+    "status": 204,
+}
+```

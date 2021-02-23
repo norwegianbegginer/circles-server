@@ -34,25 +34,25 @@ export const roomList = functions.https.onRequest(async (request: functions.http
  * @example /room-roomInfo?room_id=[ROOM_ID]
  */
 export const roomInfo = functions.https.onRequest(async (request, response) => {
-    corsHandler(request, response, async () => { 
+    corsHandler(request, response, async () => {
 
         const { room_id, accounts } = request.query as { room_id: string, accounts?: boolean };
-    
+
         if (!room_id) {
             response.json(makeResponse(400, undefined, "Room id not provided."))
             return;
         }
-    
+
         const room = await getRoomById(room_id);
-    
+
         if (!room) {
             response.json(makeResponse(404, undefined, "Room not found."))
             return;
         }
-    
+
         if ((!!accounts) == true)
             room.accounts = await getAccountsByIds(room.access);
-    
+
         response.json(makeResponse(200, { ...room }));
     });
 });
@@ -65,30 +65,30 @@ export const roomInfo = functions.https.onRequest(async (request, response) => {
  * @example /room-checkRoomAccess?account_id=[ACCOUNT_ID]?room_id=[ROOM_ID]
  */
 export const checkRoomAccess = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
-    corsHandler(request, response, async () => { 
+    corsHandler(request, response, async () => {
 
         const { account_id, room_id } = request.query as { account_id: string, room_id: string };
-    
+
         // TODO: Wrap functions with classes for better query parsing.
         if (!account_id) {
             response.json(makeResponse(400, undefined, "Account id not provided."))
             return;
         }
-    
+
         if (!room_id) {
             response.json(makeResponse(400, undefined, "Room id not provided."))
             return;
         }
-    
+
         const room = await getRoomById(room_id);
-    
+
         if (!room) {
             response.json(makeResponse(404, undefined, "Room not found."))
             return;
         }
-    
+
         const hasAccess = !!room.access.includes(account_id);
-    
+
         response.json(makeResponse(200, { hasAccess }));
     });
 });
@@ -123,5 +123,39 @@ export const roomCreate = functions.https.onRequest(async (request: functions.ht
         const { id: room_id } = await db.collection("rooms").add(new_room);
 
         response.json(makeResponse(200, { room_id }));
+    });
+});
+
+/**
+ * @description Delete room by id.
+ * @argument {string} room_id 
+ * @version 1.0.0
+ * @example /room-roomDelete?room_id=[ROOM_ID]
+ */
+
+const roomDelete = functions.https.onRequest(async (request: functions.https.Request, response: functions.Response<any>) => {
+    corsHandler(request, response, async () => {
+        const { room_id } = request.query as { room_id: string };
+
+        if (!room_id) {
+            response.json(makeResponse(404, null, "Room id not provided."));
+            return;
+        }
+
+        const room = await getRoomById(room_id);
+
+        if (!room) {
+            response.json(makeResponse(404, null, "Room not found."));
+            return;
+        }
+
+        try {
+            await db.collection("rooms").doc(room_id).delete();
+            response.json(makeResponse(204));
+        }
+
+        catch (err) {
+            response.json(makeResponse(500, null, err.message))
+        }
     });
 });
